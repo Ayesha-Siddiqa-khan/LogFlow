@@ -1,3 +1,7 @@
+# ==============================================================================
+# INPUT VARIABLES
+# ==============================================================================
+
 variable "aws_region" {
   description = "AWS region for LogFlow infrastructure deployment"
   type        = string
@@ -38,4 +42,22 @@ variable "image_retention_count" {
   description = "Maximum number of tagged container images to retain in ECR (cost guardrail)"
   type        = number
   default     = 5
+}
+
+variable "enable_compute_node" {
+  description = "Whether to provision an optional EC2 container host node"
+  type        = bool
+  default     = false
+}
+
+variable "instance_type" {
+  description = "EC2 instance size for the optional container host"
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "enable_alb" {
+  description = "Whether to provision an optional Application Load Balancer"
+  type        = bool
+  default     = false
 }

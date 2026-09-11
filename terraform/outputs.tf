@@ -1,3 +1,7 @@
+# ==============================================================================
+# OUTPUTS
+# ==============================================================================
+
 output "vpc_id" {
   description = "The ID of the LogFlow VPC"
   value       = aws_vpc.main.id
@@ -28,6 +32,21 @@ output "ecr_repository_urls" {
 output "cloudwatch_log_group" {
   description = "Name of the CloudWatch Log Group"
   value       = aws_cloudwatch_log_group.logflow.name
+}
+
+output "cloudwatch_alarm_name" {
+  description = "Name of the CloudWatch high error rate alarm"
+  value       = aws_cloudwatch_metric_alarm.high_error_alarm.alarm_name
+}
+
+output "compute_instance_id" {
+  description = "ID of the optional container host EC2 instance"
+  value       = length(aws_instance.container_host) > 0 ? aws_instance.container_host[0].id : "Not provisioned (var.enable_compute_node = false)"
+}
+
+output "alb_dns_name" {
+  description = "DNS name of the optional Application Load Balancer"
+  value       = length(aws_lb.main) > 0 ? aws_lb.main[0].dns_name : "Not provisioned (var.enable_alb = false)"
 }
 
 output "ecr_login_command" {

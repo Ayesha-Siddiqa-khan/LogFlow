@@ -8,15 +8,3 @@ terraform {
     }
   }
 }
-
-provider "aws" {
-  region = var.aws_region
-
-  default_tags {
-    tags = {
-      Project     = "LogFlow"
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-    }
-  }
-}
