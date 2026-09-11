@@ -1,0 +1,379 @@
+# ==============================================================================
+# LOGFLOW COMPLETE ALL-IN-ONE KUBERNETES MANIFEST
+# Usage:
+#   kubectl apply -f k8s/k8s.yaml
+#   kubectl delete -f k8s/k8s.yaml
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Namespace
+# ------------------------------------------------------------------------------
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: logflow
+  labels:
+    app.kubernetes.io/part-of: logflow
+
+---
+# ------------------------------------------------------------------------------
+# 2. ConfigMaps
+# ------------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-config
+  namespace: logflow
+data:
+  PORT: "3000"
+  MAX_LOGS: "2000"
+  PAYMENTS_API_URL: "http://payments-api.logflow.svc.cluster.local:3001"
+  WEB_API_URL: "http://web-api.logflow.svc.cluster.local:3002"
+  WORKER_URL: "http://worker.logflow.svc.cluster.local:3003"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payments-api-config
+  namespace: logflow
+data:
+  PORT: "3001"
+  SERVICE_NAME: "payments-api"
+  LOG_COLLECTOR_URL: "http://dashboard.logflow.svc.cluster.local:3000"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-api-config
+  namespace: logflow
+data:
+  PORT: "3002"
+  SERVICE_NAME: "web-api"
+  LOG_COLLECTOR_URL: "http://dashboard.logflow.svc.cluster.local:3000"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: worker-config
+  namespace: logflow
+data:
+  PORT: "3003"
+  SERVICE_NAME: "worker"
+  WORK_INTERVAL_MS: "4000"
+  LOG_COLLECTOR_URL: "http://dashboard.logflow.svc.cluster.local:3000"
+
+---
+# ------------------------------------------------------------------------------
+# 3. Observability Dashboard & Central Log Collector
+# ------------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: logflow
+  labels:
+    app: dashboard
+    app.kubernetes.io/part-of: logflow
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: logflow-dashboard:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: dashboard-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  namespace: logflow
+  labels:
+    app: dashboard
+    app.kubernetes.io/part-of: logflow
+spec:
+  type: NodePort
+  selector:
+    app: dashboard
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: 30080
+
+---
+# ------------------------------------------------------------------------------
+# 4. Payments API Service
+# ------------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: logflow
+  labels:
+    app: payments-api
+    app.kubernetes.io/part-of: logflow
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: payments-api
+  template:
+    metadata:
+      labels:
+        app: payments-api
+    spec:
+      containers:
+        - name: payments-api
+          image: logflow-payments-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3001
+              name: http
+          envFrom:
+            - configMapRef:
+                name: payments-api-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments-api
+  namespace: logflow
+  labels:
+    app: payments-api
+    app.kubernetes.io/part-of: logflow
+spec:
+  type: ClusterIP
+  selector:
+    app: payments-api
+  ports:
+    - name: http
+      port: 3001
+      targetPort: 3001
+
+---
+# ------------------------------------------------------------------------------
+# 5. Web API Service
+# ------------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-api
+  namespace: logflow
+  labels:
+    app: web-api
+    app.kubernetes.io/part-of: logflow
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: web-api
+  template:
+    metadata:
+      labels:
+        app: web-api
+    spec:
+      containers:
+        - name: web-api
+          image: logflow-web-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3002
+              name: http
+          envFrom:
+            - configMapRef:
+                name: web-api-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-api
+  namespace: logflow
+  labels:
+    app: web-api
+    app.kubernetes.io/part-of: logflow
+spec:
+  type: ClusterIP
+  selector:
+    app: web-api
+  ports:
+    - name: http
+      port: 3002
+      targetPort: 3002
+
+---
+# ------------------------------------------------------------------------------
+# 6. Worker Service
+# ------------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: logflow
+  labels:
+    app: worker
+    app.kubernetes.io/part-of: logflow
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: logflow-worker:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3003
+              name: http
+          envFrom:
+            - configMapRef:
+                name: worker-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3003
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3003
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker
+  namespace: logflow
+  labels:
+    app: worker
+    app.kubernetes.io/part-of: logflow
+spec:
+  type: ClusterIP
+  selector:
+    app: worker
+  ports:
+    - name: http
+      port: 3003
+      targetPort: 3003

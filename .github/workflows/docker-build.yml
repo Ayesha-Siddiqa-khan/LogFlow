@@ -1,0 +1,40 @@
+name: Docker Build & Test
+
+on:
+  pull_request:
+    paths:
+      - 'services/**'
+      - 'dashboard/**'
+      - 'docker/**'
+      - 'docker-compose.yml'
+
+jobs:
+  docker-lint-build:
+    name: Build & Validate Containers
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: payments-api
+            context: ./services/payments-api
+          - name: web-api
+            context: ./services/web-api
+          - name: worker
+            context: ./services/worker
+          - name: dashboard
+            context: ./dashboard
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (dry build)
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          tags: logflow-${{ matrix.name }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
