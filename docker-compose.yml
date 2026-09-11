@@ -1,0 +1,72 @@
+services:
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: logflow-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - PAYMENTS_API_URL=http://payments-api:3001
+      - WEB_API_URL=http://web-api:3002
+      - WORKER_URL=http://worker:3003
+    networks:
+      - logflow-net
+    restart: unless-stopped
+
+  payments-api:
+    build:
+      context: ./services/payments-api
+      dockerfile: Dockerfile
+    container_name: logflow-payments-api
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - SERVICE_NAME=payments-api
+      - LOG_COLLECTOR_URL=http://dashboard:3000
+    depends_on:
+      - dashboard
+    networks:
+      - logflow-net
+    restart: unless-stopped
+
+  web-api:
+    build:
+      context: ./services/web-api
+      dockerfile: Dockerfile
+    container_name: logflow-web-api
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - SERVICE_NAME=web-api
+      - LOG_COLLECTOR_URL=http://dashboard:3000
+    depends_on:
+      - dashboard
+    networks:
+      - logflow-net
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    container_name: logflow-worker
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - SERVICE_NAME=worker
+      - WORK_INTERVAL_MS=4000
+      - LOG_COLLECTOR_URL=http://dashboard:3000
+    depends_on:
+      - dashboard
+    networks:
+      - logflow-net
+    restart: unless-stopped
+
+networks:
+  logflow-net:
+    driver: bridge

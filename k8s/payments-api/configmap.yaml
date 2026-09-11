@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payments-api-config
+  namespace: logflow
+data:
+  PORT: "3001"
+  SERVICE_NAME: "payments-api"
+  LOG_COLLECTOR_URL: "http://dashboard.logflow.svc.cluster.local:3000"

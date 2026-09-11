@@ -1,0 +1,13 @@
+{
+  "name": "logflow-web-api",
+  "version": "1.0.0",
+  "description": "LogFlow Web API service",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test.js"
+  },
+  "keywords": ["devops", "logging", "observability", "microservices"],
+  "author": "",
+  "license": "MIT"
+}

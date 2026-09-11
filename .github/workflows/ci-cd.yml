@@ -1,0 +1,141 @@
+name: LogFlow CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  PROJECT_NAME: logflow
+
+jobs:
+  # ============================================================================
+  # Stage 1: Automated Testing & Code Verification
+  # ============================================================================
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [payments-api, web-api, worker]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Service Unit Tests
+        run: |
+          cd services/${{ matrix.service }}
+          npm test
+
+  test-dashboard:
+    name: Test Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Dashboard Tests
+        run: |
+          cd dashboard
+          npm test
+
+  # ============================================================================
+  # Stage 2 & 3: Docker Build and Push to Amazon ECR
+  # ============================================================================
+  build-and-push:
+    name: Build & Push Docker Images
+    needs: [test, test-dashboard]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    strategy:
+      matrix:
+        include:
+          - service: payments-api
+            context: ./services/payments-api
+            repo: logflow-payments-api
+          - service: web-api
+            context: ./services/web-api
+            repo: logflow-web-api
+          - service: worker
+            context: ./services/worker
+            repo: logflow-worker
+          - service: dashboard
+            context: ./dashboard
+            repo: logflow-dashboard
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag and Push Container Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/${{ matrix.repo }}"
+          echo "Building image $IMAGE_URI:$IMAGE_TAG"
+          docker build -t "$IMAGE_URI:$IMAGE_TAG" -t "$IMAGE_URI:latest" ${{ matrix.context }}
+          docker push "$IMAGE_URI:$IMAGE_TAG"
+          docker push "$IMAGE_URI:latest"
+
+  # ============================================================================
+  # Stage 4 & 5: Kubernetes Deployment & Rollout Verification
+  # ============================================================================
+  deploy:
+    name: Deploy to Kubernetes
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Apply Kubernetes Manifests
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/payments-api/
+          kubectl apply -f k8s/web-api/
+          kubectl apply -f k8s/worker/
+          kubectl apply -f k8s/dashboard/
+
+      - name: Verify Rollout Status
+        run: |
+          echo "Verifying deployments rollout status..."
+          kubectl rollout status deployment/payments-api -n logflow --timeout=120s
+          kubectl rollout status deployment/web-api -n logflow --timeout=120s
+          kubectl rollout status deployment/worker -n logflow --timeout=120s
+          kubectl rollout status deployment/dashboard -n logflow --timeout=120s
+          echo "All deployments rolled out successfully!"

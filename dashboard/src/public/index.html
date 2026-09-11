@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogFlow | Centralized Logging & Observability Platform</title>
+  <meta name="description" content="Centralized logging and health observability platform for DevOps practice.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">LogFlow <span>Console</span></h1>
+          <p class="brand-subtitle">Centralized Observability & DevOps Platform</p>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <span class="pulse-badge" id="cluster-status-badge">
+          <span class="pulse-dot"></span>
+          <span id="cluster-status-text">Cluster Online</span>
+        </span>
+        <button id="btn-refresh" class="btn btn-secondary" title="Refresh state">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    <!-- Metrics Row -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Total Ingested Logs</div>
+        <div class="metric-val" id="metric-total">0</div>
+        <div class="metric-sub">Ring buffer capacity: 2,000</div>
+      </div>
+      <div class="metric-card metric-error">
+        <div class="metric-label">Application Errors</div>
+        <div class="metric-val text-error" id="metric-errors">0</div>
+        <div class="metric-sub" id="metric-error-rate">0% error rate</div>
+      </div>
+      <div class="metric-card metric-warn">
+        <div class="metric-label">Service Warnings</div>
+        <div class="metric-val text-warn" id="metric-warnings">0</div>
+        <div class="metric-sub">Degraded & latency alerts</div>
+      </div>
+      <div class="metric-card metric-info">
+        <div class="metric-label">Healthy Services</div>
+        <div class="metric-val text-success" id="metric-services-healthy">0 / 3</div>
+        <div class="metric-sub">Monitored cluster endpoints</div>
+      </div>
+    </section>
+
+    <!-- Services Health Grid -->
+    <section class="section-card">
+      <div class="section-header">
+        <div class="section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+          Discovered Services & Health Status
+        </div>
+        <span class="badge-text" id="last-ping-time">Updated: just now</span>
+      </div>
+      <div class="services-grid" id="services-grid">
+        <!-- Injected via JS -->
+      </div>
+    </section>
+
+    <!-- DevOps Simulation & Fault Injection Bar -->
+    <section class="section-card simulation-panel">
+      <div class="section-header">
+        <div class="section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+          DevOps Failure Simulation & Troubleshooting Tools
+        </div>
+        <div class="sim-tag">Chaos Practice Tools</div>
+      </div>
+      <p class="sim-desc">
+        Trigger intentional failure scenarios specified in PRD Section 17 to practice troubleshooting via centralized logs:
+      </p>
+      <div class="sim-buttons-group">
+        <button id="sim-traffic" class="btn btn-primary" title="Send test transactions">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          Send Normal Traffic
+        </button>
+        <button id="sim-scenario1" class="btn btn-danger" title="Scenario 1: Break payments-api">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          Scenario 1: Fail Payments API
+        </button>
+        <button id="sim-scenario2" class="btn btn-danger" title="Scenario 2: Induce Web API error storm">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          Scenario 2: App Error Storm
+        </button>
+        <button id="sim-scenario3" class="btn btn-warning" title="Scenario 3: Degrade worker processing">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          Scenario 3: Degrade Worker
+        </button>
+        <button id="sim-reset" class="btn btn-success" title="Restore all services to healthy">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Restore All Services
+        </button>
+      </div>
+      <div id="sim-feedback" class="sim-feedback hidden"></div>
+    </section>
+
+    <!-- Centralized Logs Viewer -->
+    <section class="section-card logs-section">
+      <div class="logs-header">
+        <div class="section-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Centralized Log Stream
+          <span class="count-tag" id="filtered-count-tag">0 logs</span>
+        </div>
+        <div class="logs-controls">
+          <label class="toggle-control">
+            <input type="checkbox" id="auto-scroll-toggle" checked>
+            <span>Live Stream</span>
+          </label>
+          <button id="btn-clear-logs" class="btn btn-outline" title="Clear in-memory buffer">Clear</button>
+        </div>
+      </div>
+
+      <!-- Filters Toolbar -->
+      <div class="filters-bar">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="log-search-input" placeholder="Search logs (message, trace, metadata)...">
+        </div>
+        <div class="filter-group">
+          <label for="filter-service">Service:</label>
+          <select id="filter-service" class="select-dropdown">
+            <option value="all">All Services</option>
+            <option value="payments-api">payments-api</option>
+            <option value="web-api">web-api</option>
+            <option value="worker">worker</option>
+            <option value="dashboard">dashboard</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-level">Level:</label>
+          <select id="filter-level" class="select-dropdown">
+            <option value="all">All Levels</option>
+            <option value="INFO">INFO</option>
+            <option value="WARN">WARN</option>
+            <option value="ERROR">ERROR</option>
+            <option value="DEBUG">DEBUG</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Logs Stream Table / Terminal -->
+      <div class="log-stream-container" id="log-stream">
+        <!-- Log entries rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div>LogFlow DevOps Practice Platform • Structured Centralized Logging</div>
+      <div>Designed for Kubernetes, Docker, Terraform & CI/CD</div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

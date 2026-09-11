@@ -1,0 +1,13 @@
+{
+  "name": "logflow-dashboard",
+  "version": "1.0.0",
+  "description": "LogFlow Centralized Logging Store and Observability Dashboard",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node test.js"
+  },
+  "keywords": ["devops", "logging", "observability", "dashboard"],
+  "author": "",
+  "license": "MIT"
+}
