@@ -57,7 +57,6 @@ Modern cloud architectures distribute microservices across containers and cluste
 ### Prerequisites
 - **Node.js** v18+ installed
 - **Docker** and **Docker Compose** installed
-- **Terraform** v1.5+ (optional for cloud deployment)
 - **kubectl** (optional for Kubernetes deployment)
 
 ### Running Standalone (Without Docker)
@@ -141,34 +140,7 @@ docker build -t logflow-dashboard:latest ./dashboard
 
 ---
 
-## 6. Terraform Commands
 
-Infrastructure is provisioned declaratively in the `terraform/` directory.
-
-### Provisioning Steps
-
-```bash
-cd terraform
-
-# 1. Initialize Terraform and download providers
-terraform init
-
-# 2. Inspect execution plan
-terraform plan
-
-# 3. Apply infrastructure to AWS
-terraform apply -auto-approve
-```
-
-### Outputs
-Upon successful application, Terraform outputs:
-- VPC ID and Subnet IDs
-- Security Group IDs
-- ECR Repository URLs (`logflow-payments-api`, `logflow-web-api`, `logflow-worker`, `logflow-dashboard`)
-- CloudWatch Log Group name (`/aws/logflow/dev`)
-- Docker ECR login command
-
----
 
 ## 7. Kubernetes Deployment
 
@@ -315,21 +287,3 @@ LogFlow includes automated chaos tools to practice real-world incident response.
     ```bash
     curl -X POST http://localhost:3003/reset
     ```
-
----
-
-## 12. Cleaning Up AWS Resources
-
-To avoid incurring ongoing cloud charges after practicing:
-
-```bash
-cd terraform
-
-# Destroy all AWS resources managed by Terraform
-terraform destroy -auto-approve
-```
-
-Verify in AWS Console that:
-- ECR repositories are deleted.
-- CloudWatch log group `/aws/logflow/dev` is removed.
-- VPC and security groups are completely cleaned up.
