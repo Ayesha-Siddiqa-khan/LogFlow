@@ -110,9 +110,18 @@ jobs:
     needs: [build-and-push]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION || env.AWS_REGION }}
 
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v4
@@ -122,19 +131,37 @@ jobs:
       - name: Configure Kubeconfig
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG_DATA || secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+          echo "${{ secrets.KUBECONFIG_DATA || secrets.KUBE_CONFIG_DATA }}" | tr -d '\r\n ' | base64 --decode > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
       - name: Apply Kubernetes Manifests
         env:
-          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY || '257536659737.dkr.ecr.us-east-1.amazonaws.com' }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          if [ -n "$ECR_REGISTRY" ]; then
-            sed -i "s|image: logflow-\(.*\):latest|image: $ECR_REGISTRY/logflow-\1:$IMAGE_TAG|g" k8s/*/*.yaml
-            sed -i "s|imagePullPolicy: IfNotPresent|imagePullPolicy: Always|g" k8s/*/*.yaml
-          fi
+          CLEAN_REGISTRY="$(printf '%s' "$ECR_REGISTRY" | tr -d '[:space:]' | sed -e 's|^https\?://||' -e 's|/*$||')"
+          echo "Using ECR Registry: $CLEAN_REGISTRY"
+
           kubectl apply -f k8s/namespace.yaml
+
+          TOKEN="$(aws ecr get-login-password --region "${{ secrets.AWS_REGION || env.AWS_REGION }}")"
+          kubectl create secret docker-registry ecr-secret \
+            --docker-server="$CLEAN_REGISTRY" \
+            --docker-username=AWS \
+            --docker-password="$TOKEN" \
+            --namespace=logflow \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl patch serviceaccount default -n logflow -p '{"imagePullSecrets": [{"name": "ecr-secret"}]}'
+
+          if [ -n "$CLEAN_REGISTRY" ]; then
+            for f in k8s/*/deployment.yaml; do
+              if [ -f "$f" ]; then
+                sed -i "s|image: logflow-\([^:]*\):latest|image: ${CLEAN_REGISTRY}/logflow-\1:${IMAGE_TAG}|g" "$f"
+                sed -i "s|imagePullPolicy: IfNotPresent|imagePullPolicy: Always|g" "$f"
+              fi
+            done
+          fi
+
           kubectl apply -f k8s/payments-api/
           kubectl apply -f k8s/web-api/
           kubectl apply -f k8s/worker/
@@ -143,8 +170,8 @@ jobs:
       - name: Verify Rollout Status
         run: |
           echo "Verifying deployments rollout status..."
-          kubectl rollout status deployment/payments-api -n logflow --timeout=120s
-          kubectl rollout status deployment/web-api -n logflow --timeout=120s
-          kubectl rollout status deployment/worker -n logflow --timeout=120s
-          kubectl rollout status deployment/dashboard -n logflow --timeout=120s
+          kubectl rollout status deployment/payments-api -n logflow --timeout=180s
+          kubectl rollout status deployment/web-api -n logflow --timeout=180s
+          kubectl rollout status deployment/worker -n logflow --timeout=180s
+          kubectl rollout status deployment/dashboard -n logflow --timeout=180s
           echo "All deployments rolled out successfully!"
