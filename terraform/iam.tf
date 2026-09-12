@@ -23,7 +23,16 @@ resource "aws_iam_role" "github_actions_oidc" {
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = var.github_oidc_audience
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"
+          }
+          StringLike = {
+            "token.actions.githubusercontent.com:sub" = [
+              "repo:${var.github_repository}:*",
+              "repo:${var.github_repository}@*:*",
+              "repo:Ayesha-Siddiqa-khan*/LogFlow*:*",
+              "repo:ayesha-siddiqa-khan*/LogFlow*:*",
+              "repo:Ayesha-Siddiqa-khan*/logflow*:*",
+              "repo:ayesha-siddiqa-khan*/logflow*:*"
+            ]
           }
         }
       }
@@ -55,7 +64,10 @@ resource "aws_iam_policy" "github_actions_ecr_push" {
         Sid      = "AllowPushToSelectedRepository"
         Effect   = "Allow"
         Action   = ["ecr:BatchCheckLayerAvailability", "ecr:CompleteLayerUpload", "ecr:InitiateLayerUpload", "ecr:PutImage", "ecr:UploadLayerPart", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
-        Resource = local.ecr_repository_arn
+        Resource = [
+          local.ecr_repository_arn,
+          "arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:repository/${var.ecr_repository_name}*"
+        ]
       }
     ]
   })
@@ -110,7 +122,10 @@ resource "aws_iam_policy" "worker_ec2_ecr_pull" {
         Sid      = "AllowPullFromSelectedRepository"
         Effect   = "Allow"
         Action   = ["ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
-        Resource = local.ecr_repository_arn
+        Resource = [
+          local.ecr_repository_arn,
+          "arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:repository/${var.ecr_repository_name}*"
+        ]
       }
     ]
   })
@@ -163,7 +178,10 @@ resource "aws_iam_policy" "terrapilot_ec2_ecr_pull" {
         Sid      = "AllowPullFromSelectedRepository"
         Effect   = "Allow"
         Action   = ["ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
-        Resource = local.ecr_repository_arn
+        Resource = [
+          local.ecr_repository_arn,
+          "arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:repository/${var.ecr_repository_name}*"
+        ]
       }
     ]
   })
