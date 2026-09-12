@@ -59,6 +59,9 @@ jobs:
     needs: [test, test-dashboard]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
     strategy:
       matrix:
         include:
@@ -81,9 +84,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION || env.AWS_REGION }}
 
       - name: Log in to Amazon ECR
         id: login-ecr
@@ -120,11 +122,18 @@ jobs:
       - name: Configure Kubeconfig
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+          echo "${{ secrets.KUBECONFIG_DATA || secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
       - name: Apply Kubernetes Manifests
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
+          if [ -n "$ECR_REGISTRY" ]; then
+            sed -i "s|image: logflow-\(.*\):latest|image: $ECR_REGISTRY/logflow-\1:$IMAGE_TAG|g" k8s/*/*.yaml
+            sed -i "s|imagePullPolicy: IfNotPresent|imagePullPolicy: Always|g" k8s/*/*.yaml
+          fi
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -f k8s/payments-api/
           kubectl apply -f k8s/web-api/
