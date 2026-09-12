@@ -31,9 +31,7 @@ resource "aws_iam_role" "github_actions_oidc" {
               "repo:Ayesha-Siddiqa-khan*/LogFlow*:*",
               "repo:ayesha-siddiqa-khan*/LogFlow*:*",
               "repo:Ayesha-Siddiqa-khan*/logflow*:*",
-              "repo:ayesha-siddiqa-khan*/logflow*:*",
-              "repo:Ayesha-Siddiqa-khan*/Agent-System-Prompt*:*",
-              "repo:ayesha-siddiqa-khan*/Agent-System-Prompt*:*"
+              "repo:ayesha-siddiqa-khan*/logflow*:*"
             ]
           }
         }
