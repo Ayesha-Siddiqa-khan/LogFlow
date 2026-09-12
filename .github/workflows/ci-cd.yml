@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  AWS_REGION: us-east-1
   PROJECT_NAME: logflow
 
 jobs:
@@ -85,7 +85,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ secrets.AWS_REGION || env.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Log in to Amazon ECR
         id: login-ecr
@@ -121,7 +121,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ secrets.AWS_REGION || env.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v4
@@ -144,7 +144,7 @@ jobs:
 
           kubectl apply -f k8s/namespace.yaml
 
-          TOKEN="$(aws ecr get-login-password --region "${{ secrets.AWS_REGION || env.AWS_REGION }}")"
+          TOKEN="$(aws ecr get-login-password --region us-east-1)"
           kubectl create secret docker-registry ecr-secret \
             --docker-server="$CLEAN_REGISTRY" \
             --docker-username=AWS \
